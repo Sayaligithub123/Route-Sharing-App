@@ -61,26 +61,42 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
   Future<void> _connectSocket() async {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getString('userId');
-    if (userId == null) return;
+    if (userId == null) {
+      print('Driver ActiveRide: userId is null, cannot connect socket');
+      return;
+    }
 
-    socket = IO.io('http://192.168.31.159:5000', <String, dynamic>{
-      'transports': ['websocket'],
-      'autoConnect': false,
-    });
+    print('Driver ActiveRide: Connecting socket for userId=$userId, room=driver_$userId');
+
+    socket = IO.io('http://192.168.31.159:5000', IO.OptionBuilder()
+      .setTransports(['websocket'])
+      .disableAutoConnect()
+      .enableForce()
+      .build());
     socket!.connect();
 
     socket!.onConnect((_) {
-      print('Driver ActiveRide: Socket connected');
+      print('Driver ActiveRide: Socket connected (id=${socket!.id})');
       socket!.emit('join_room', {'userId': userId, 'role': 'Driver'});
+      print('Driver ActiveRide: Emitted join_room for driver_$userId');
     });
 
     // Listen for new ride requests from passengers
     socket!.on('new_request', (data) {
-      print('New request received: $data');
+      print('Driver ActiveRide: new_request received: $data');
       if (mounted) {
         final request = data['request'];
         _fetchPassengerAndShowModal(request);
       }
+    });
+
+    socket!.onConnectError((error) {
+      print('Driver ActiveRide: Socket connection error: $error');
+    });
+
+    socket!.onReconnect((_) {
+      print('Driver ActiveRide: Socket reconnected, re-joining room');
+      socket!.emit('join_room', {'userId': userId, 'role': 'Driver'});
     });
 
     socket!.onDisconnect((_) {

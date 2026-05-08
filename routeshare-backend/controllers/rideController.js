@@ -90,7 +90,16 @@ exports.requestToJoin = async (req, res) => {
 
     // Emit event to the driver
     if (req.io) {
-      req.io.to(`driver_${ride.driverId}`).emit("new_request", {
+      const driverRoom = `driver_${ride.driverId}`;
+      const roomSockets = req.io.sockets.adapter.rooms.get(driverRoom);
+      console.log(`[requestToJoin] Emitting new_request to room: ${driverRoom}`);
+      console.log(`[requestToJoin] Sockets in room "${driverRoom}": ${roomSockets ? roomSockets.size : 0}`);
+      
+      // Log all active rooms for debugging
+      const allRooms = Array.from(req.io.sockets.adapter.rooms.keys()).filter(r => r.startsWith('driver_'));
+      console.log(`[requestToJoin] All active driver rooms: ${JSON.stringify(allRooms)}`);
+
+      req.io.to(driverRoom).emit("new_request", {
         message: "You have a new ride request",
         request: newRequest,
       });
@@ -107,6 +116,8 @@ exports.requestToJoin = async (req, res) => {
           });
         });
       }
+    } else {
+      console.log("[requestToJoin] WARNING: req.io is undefined! Socket.IO not available.");
     }
 
     res.status(201).json({ message: "Request sent successfully", request: newRequest });

@@ -88,10 +88,11 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     final userId = prefs.getString('userId');
     if (userId == null) return;
 
-    socket = IO.io('http://192.168.31.159:5000', <String, dynamic>{
-      'transports': ['websocket'],
-      'autoConnect': false,
-    });
+    socket = IO.io('http://192.168.31.159:5000', IO.OptionBuilder()
+      .setTransports(['websocket'])
+      .disableAutoConnect()
+      .enableForce()
+      .build());
     socket!.connect();
 
     socket!.onConnect((_) {
