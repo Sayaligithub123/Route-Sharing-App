@@ -33,10 +33,12 @@ io.on("connection", (socket) => {
   socket.on("join_room", ({ userId, role }) => {
     if (role === "Driver") {
       socket.join(`driver_${userId}`);
-      console.log(`User ${userId} joined room driver_${userId}`);
+      const roomSize = io.sockets.adapter.rooms.get(`driver_${userId}`)?.size || 0;
+      console.log(`[join_room] Driver ${userId} (socket: ${socket.id}) joined room driver_${userId} (${roomSize} socket(s) in room)`);
     } else if (role === "Passenger") {
       socket.join(`passenger_${userId}`);
-      console.log(`User ${userId} joined room passenger_${userId}`);
+      const roomSize = io.sockets.adapter.rooms.get(`passenger_${userId}`)?.size || 0;
+      console.log(`[join_room] Passenger ${userId} (socket: ${socket.id}) joined room passenger_${userId} (${roomSize} socket(s) in room)`);
     }
   });
 
