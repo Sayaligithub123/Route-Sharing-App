@@ -25,7 +25,7 @@ class _RidesScreenState extends State<RidesScreen> {
   }
 
   Future<void> fetchRides() async {
-    final url = Uri.parse("http://192.168.31.159:5000/api/rides/search?source=${widget.source}&destination=${widget.destination}");
+    final url = Uri.parse("http://192.168.31.52:5000/api/rides/search?source=${widget.source}&destination=${widget.destination}");
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
@@ -228,7 +228,7 @@ class _RidesScreenState extends State<RidesScreen> {
                   return;
                 }
                 
-                final url = Uri.parse("http://192.168.31.159:5000/api/rides/request");
+                final url = Uri.parse("http://192.168.31.52:5000/api/rides/request");
                 try {
                   final response = await http.post(
                     url,

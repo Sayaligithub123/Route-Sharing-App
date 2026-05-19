@@ -45,7 +45,7 @@ class _RequestWaitingScreenState extends State<RequestWaitingScreen> {
   }
 
   Future<void> _checkRequestStatus() async {
-    final url = Uri.parse("http://192.168.31.159:5000/api/rides/request-status/${widget.requestId}");
+    final url = Uri.parse("http://:5000/api/rides/request-status/${widget.requestId}");
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
@@ -77,7 +77,7 @@ class _RequestWaitingScreenState extends State<RequestWaitingScreen> {
     }
 
     try {
-      final url = Uri.parse("http://192.168.31.159:5000/api/rides/ride/$rideId");
+      final url = Uri.parse("http://192.168.31.52:5000/api/rides/ride/$rideId");
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final rideData = jsonDecode(response.body);

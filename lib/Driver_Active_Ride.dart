@@ -39,7 +39,7 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
 
   Future<void> _fetchPassengers() async {
     try {
-      final url = Uri.parse("http://192.168.31.159:5000/api/rides/ride/${widget.rideId}/passengers");
+      final url = Uri.parse("http://192.168.31.52:5000/api/rides/ride/${widget.rideId}/passengers");
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -63,7 +63,7 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
     final userId = prefs.getString('userId');
     if (userId == null) return;
 
-    socket = IO.io('http://192.168.31.159:5000', <String, dynamic>{
+    socket = IO.io('http://192.168.31.52:5000', <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': false,
     });
@@ -96,7 +96,7 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
     String passengerName = 'Passenger';
     String passengerPhone = '--';
     try {
-      final url = Uri.parse("http://192.168.31.159:5000/api/users/$passengerId");
+      final url = Uri.parse("http://192.168.31.52:5000/api/users/$passengerId");
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final user = jsonDecode(response.body);
@@ -129,7 +129,7 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
   }
 
   Future<void> _startTrip() async {
-    final url = Uri.parse("http://192.168.31.159:5000/api/rides/start-trip");
+    final url = Uri.parse("http://192.168.31.52:5000/api/rides/start-trip");
     try {
       final response = await http.post(
         url,
@@ -160,7 +160,7 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
   }
 
   Future<void> _completeRide() async {
-    final url = Uri.parse("http://192.168.31.159:5000/api/rides/complete-ride");
+    final url = Uri.parse("http://192.168.31.52:5000/api/rides/complete-ride");
     try {
       final response = await http.post(
         url,

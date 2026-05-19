@@ -24,11 +24,22 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final vehicleNumberController = TextEditingController();
   final licenseController = TextEditingController();
 
+  final _formKey = GlobalKey<FormState>();
   bool isLoading = false;
 
   // 🔥 API CALL
   Future<bool> saveProfile() async {
-    final url = Uri.parse("http://192.168.31.159:5000/api/users/create");
+    // Validate form fields first
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      // Show a snackbar indicating validation failed
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please correct the highlighted errors.')),
+      );
+      return false;
+    }
+
+    final url = Uri.parse("http://192.168.31.52:5000/api/users/create");
+
 
     try {
       final response = await http.post(
@@ -92,90 +103,104 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            // Profile Photo
-            Column(
-              children: [
-                Container(
-                  height: 100,
-                  width: 100,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.green, width: 2),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            children: [
+              // Profile Photo
+              Column(
+                children: [
+                  Container(
+                    height: 100,
+                    width: 100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.green, width: 2),
+                    ),
+                    child: const Icon(Icons.add, size: 30),
                   ),
-                  child: const Icon(Icons.add, size: 30),
-                ),
-                const SizedBox(height: 10),
-                const Text("Upload photo"),
-              ],
-            ),
-
-            const SizedBox(height: 20),
-
-            // Common Fields
-            buildField("FULL NAME", nameController),
-            buildField("EMAIL (OPTIONAL)", emailController),
-            buildField("PHONE", phoneController),
-
-            const SizedBox(height: 20),
-
-            // Driver Fields
-            if (widget.role == "Driver") ...[
-              buildField("VEHICLE NAME", vehicleNameController),
-              buildField("VEHICLE NUMBER", vehicleNumberController),
-              buildField("DRIVING LICENSE", licenseController),
-              const SizedBox(height: 20),
-            ],
-
-            const SizedBox(height: 20),
-
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                padding: const EdgeInsets.symmetric(vertical: 15),
+                  const SizedBox(height: 10),
+                  const Text("Upload photo"),
+                ],
               ),
-              onPressed: isLoading ? null : () async {
-                setState(() {
-                  isLoading = true;
-                });
-                
-                bool success = await saveProfile();
+              const SizedBox(height: 20),
 
-                setState(() {
-                  isLoading = false;
-                });
-
-                if (success && mounted) {
-                  final nextScreen = widget.role == "Driver"
-                      ? const DriverHomeScreen()
-                      : const PassengerHomeScreen();
-
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => nextScreen),
-                  );
+              // Common Fields
+              buildFormField("FULL NAME", nameController, (value) {
+                if (value == null || value.isEmpty) return 'Name is required';
+                return null;
+              }),
+              buildFormField("EMAIL (OPTIONAL)", emailController, (value) {
+                if (value != null && value.isNotEmpty) {
+                  final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}');
+                  if (!emailRegex.hasMatch(value)) return 'Enter a valid email';
                 }
-              },
-              child: isLoading 
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                    )
-                  : const Text("Complete Setup →"),
-            ),
-          ],
+                return null;
+              }),
+              buildFormField("PHONE", phoneController, (value) {
+                if (value == null || value.isEmpty) return 'Phone number is required';
+                final numeric = RegExp(r'^\d{10,15}');
+                if (!numeric.hasMatch(value)) return 'Enter a valid phone number';
+                return null;
+              }),
+              const SizedBox(height: 20),
+              // Driver Fields
+              if (widget.role == "Driver") ...[
+                buildFormField("VEHICLE NAME", vehicleNameController, (value) => null),
+                buildFormField("VEHICLE NUMBER", vehicleNumberController, (value) => null),
+                buildFormField("DRIVING LICENSE", licenseController, (value) => null),
+                const SizedBox(height: 20),
+              ],
+              const SizedBox(height: 20),
+
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                ),
+                onPressed: isLoading ? null : () async {
+                  setState(() {
+                    isLoading = true;
+                  });
+                  
+                  bool success = await saveProfile();
+
+                  setState(() {
+                    isLoading = false;
+                  });
+
+                  if (success && mounted) {
+                    final nextScreen = widget.role == "Driver"
+                        ? const DriverHomeScreen()
+                        : const PassengerHomeScreen();
+
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => nextScreen),
+                    );
+                  }
+                },
+                child: isLoading 
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Text("Complete Setup →"),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget buildField(String label, TextEditingController controller) {
+  Widget buildFormField(String label, TextEditingController controller, String? Function(String?) validator) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
-      child: TextField(
+      child: TextFormField(
         controller: controller,
+        validator: validator,
         decoration: InputDecoration(
           labelText: label,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -183,4 +208,5 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       ),
     );
   }
+
 }

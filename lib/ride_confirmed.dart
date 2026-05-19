@@ -47,7 +47,7 @@ class _RideConfirmedScreenState extends State<RideConfirmedScreen> {
     final userId = prefs.getString('userId');
     if (userId == null) return;
 
-    socket = IO.io('http://192.168.31.159:5000', <String, dynamic>{
+    socket = IO.io('http://192.168.31.52:5000', <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': false,
     });
