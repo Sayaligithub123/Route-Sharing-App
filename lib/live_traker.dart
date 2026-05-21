@@ -5,12 +5,17 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'RideComplete.dart';
 import 'Coride_consent.dart';
+import 'services/api_config.dart';
 
 class LiveTrackingScreen extends StatefulWidget {
   final String rideId;
   final dynamic rideData;
 
-  const LiveTrackingScreen({super.key, required this.rideId, required this.rideData});
+  const LiveTrackingScreen({
+    super.key,
+    required this.rideId,
+    required this.rideData,
+  });
 
   @override
   State<LiveTrackingScreen> createState() => _LiveTrackingScreenState();
@@ -60,13 +65,17 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
   Future<void> _fetchPassengers() async {
     try {
-      final url = Uri.parse("http://192.168.186.81:5000/api/rides/ride/${widget.rideId}/passengers");
+      final url = Uri.parse(
+        "${ApiConfig.baseUrl}/api/rides/ride/${widget.rideId}/passengers",
+      );
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (mounted) {
           setState(() {
-            passengers = List<Map<String, dynamic>>.from(data['passengers'] ?? []);
+            passengers = List<Map<String, dynamic>>.from(
+              data['passengers'] ?? [],
+            );
             if (data['driver'] != null) {
               driverInfo = Map<String, dynamic>.from(data['driver']);
               driverName = driverInfo!['name'] ?? '--';
@@ -75,11 +84,17 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
           });
         }
       } else {
-        if (mounted) setState(() { isLoadingPassengers = false; });
+        if (mounted)
+          setState(() {
+            isLoadingPassengers = false;
+          });
       }
     } catch (e) {
       print("Error fetching passengers: $e");
-      if (mounted) setState(() { isLoadingPassengers = false; });
+      if (mounted)
+        setState(() {
+          isLoadingPassengers = false;
+        });
     }
   }
 
@@ -88,7 +103,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     final userId = prefs.getString('userId');
     if (userId == null) return;
 
-    socket = IO.io('http://192.168.186.81:5000', <String, dynamic>{
+    socket = IO.io(ApiConfig.baseUrl, <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': false,
     });
@@ -125,7 +140,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
         _fetchPassengers();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("${data['newPassengerName'] ?? 'A passenger'} joined your ride!"),
+            content: Text(
+              "${data['newPassengerName'] ?? 'A passenger'} joined your ride!",
+            ),
             backgroundColor: const Color(0xFF1A9E6E),
           ),
         );
@@ -181,52 +198,83 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
               children: [
                 // Grid lines for map effect
                 Positioned(
-                  top: 0, bottom: 0, left: 150,
+                  top: 0,
+                  bottom: 0,
+                  left: 150,
                   child: Container(width: 6, color: Colors.white),
                 ),
                 Positioned(
-                  top: 110, left: 0, right: 0,
+                  top: 110,
+                  left: 0,
+                  right: 0,
                   child: Container(height: 6, color: Colors.white),
                 ),
                 // Car icon
                 Positioned(
-                  top: 97, left: 138,
+                  top: 97,
+                  left: 138,
                   child: Container(
-                    width: 36, height: 36,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
                       color: const Color(0xFF1A9E6E),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Center(child: Text("🚗", style: TextStyle(fontSize: 18))),
+                    child: const Center(
+                      child: Text("🚗", style: TextStyle(fontSize: 18)),
+                    ),
                   ),
                 ),
                 // Destination pin
                 Positioned(
-                  bottom: 40, left: 210,
-                  child: const Icon(Icons.location_on, color: Color(0xFF1A9E6E), size: 28),
+                  bottom: 40,
+                  left: 210,
+                  child: const Icon(
+                    Icons.location_on,
+                    color: Color(0xFF1A9E6E),
+                    size: 28,
+                  ),
                 ),
                 // Live badge
                 Positioned(
-                  top: 50, right: 16,
+                  top: 50,
+                  right: 16,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(20)),
-                    child: const Text("• Live", style: TextStyle(color: Colors.white)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text(
+                      "• Live",
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 ),
                 // Passenger count badge
                 if (isSharedRide)
                   Positioned(
-                    top: 50, left: 16,
+                    top: 50,
+                    left: 16,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF1A9E6E).withOpacity(0.95),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         "${passengers.length} passengers aboard",
-                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -245,15 +293,26 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                   if (isSharedRide)
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF1A9E6E).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFF1A9E6E).withOpacity(0.3)),
+                        border: Border.all(
+                          color: const Color(0xFF1A9E6E).withOpacity(0.3),
+                        ),
                       ),
                       child: Row(
                         children: [
-                          const Text("✓ ", style: TextStyle(color: Color(0xFF1A9E6E), fontSize: 16)),
+                          const Text(
+                            "✓ ",
+                            style: TextStyle(
+                              color: Color(0xFF1A9E6E),
+                              fontSize: 16,
+                            ),
+                          ),
                           Text(
                             "Shared ride active · You're saving ₹${passengers.length > 1 ? 48 * (passengers.length - 1) : 0}",
                             style: const TextStyle(
@@ -268,14 +327,20 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                   if (!isSharedRide)
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.green.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Text(
                         "On your way",
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
 
@@ -304,9 +369,21 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text("Driver", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                            const Text(
+                              "Driver",
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
+                            ),
                             const SizedBox(height: 4),
-                            const Text("ETA to your drop", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                            const Text(
+                              "ETA to your drop",
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
+                            ),
                           ],
                         ),
                         Column(
@@ -316,14 +393,23 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                               children: [
                                 Text(
                                   driverName,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
                                 ),
-                                const Text(" · 4.8 ", style: TextStyle(fontSize: 13)),
+                                const Text(
+                                  " · 4.8 ",
+                                  style: TextStyle(fontSize: 13),
+                                ),
                                 const Text("⭐", style: TextStyle(fontSize: 12)),
                               ],
                             ),
                             const SizedBox(height: 4),
-                            const Text("~11 min", style: TextStyle(fontWeight: FontWeight.w600)),
+                            const Text(
+                              "~11 min",
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
                           ],
                         ),
                       ],
@@ -339,14 +425,19 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,
                         padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       onPressed: () {},
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text("🆘 ", style: TextStyle(fontSize: 16)),
-                          Text("SOS Emergency", style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text(
+                            "SOS Emergency",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                         ],
                       ),
                     ),
@@ -373,7 +464,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       {'bg': const Color(0xFFDBEAFE), 'fg': const Color(0xFF1E40AF)},
     ];
 
-    final List<String> dropLabels = ["1st drop", "2nd drop", "3rd drop", "4th drop"];
+    final List<String> dropLabels = [
+      "1st drop",
+      "2nd drop",
+      "3rd drop",
+      "4th drop",
+    ];
 
     return Row(
       children: [
@@ -383,7 +479,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
           final passenger = entry.value;
           final name = passenger['name'] ?? 'Passenger';
           final dropLoc = passenger['dropLocation'] ?? '';
-          final isCurrentUser = currentUserId != null && passenger['_id'] == currentUserId;
+          final isCurrentUser =
+              currentUserId != null && passenger['_id'] == currentUserId;
           final colors = colorPalette[index % colorPalette.length];
           final initials = _getInitials(name);
 
@@ -396,7 +493,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.grey.shade100),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6),
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 6,
+                  ),
                 ],
               ),
               child: Column(
@@ -416,8 +516,13 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    isCurrentUser ? "You (${name.split(' ').first})" : "${name.split(' ').first} ${name.length > 1 ? '${name.split(' ').last[0]}.' : ''}",
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    isCurrentUser
+                        ? "You (${name.split(' ').first})"
+                        : "${name.split(' ').first} ${name.length > 1 ? '${name.split(' ').last[0]}.' : ''}",
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
@@ -427,13 +532,18 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                   ),
                   const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: colors['bg'],
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      index < dropLabels.length ? dropLabels[index] : "${index + 1}th drop",
+                      index < dropLabels.length
+                          ? dropLabels[index]
+                          : "${index + 1}th drop",
                       style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w600,
@@ -461,7 +571,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
             ),
             child: Column(
               children: [
-                const Text("You pay", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                const Text(
+                  "You pay",
+                  style: TextStyle(fontSize: 10, color: Colors.grey),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   "₹${passengers.length > 1 ? 82 : 130}",

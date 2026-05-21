@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'Driver_joiningRequest.dart';
 import 'Driver_homepage.dart';
-import 'services/route_service.dart';
 
 class ActiveRideScreen extends StatefulWidget {
   final String rideId;
@@ -62,22 +61,32 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
 
   Future<void> _fetchPassengers() async {
     try {
-      final url = Uri.parse("http://192.168.186.81:5000/api/rides/ride/${widget.rideId}/passengers");
+      final url = Uri.parse(
+        "${ApiConfig.baseUrl}/api/rides/ride/${widget.rideId}/passengers",
+      );
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (mounted) {
           setState(() {
-            passengers = List<Map<String, dynamic>>.from(data['passengers'] ?? []);
+            passengers = List<Map<String, dynamic>>.from(
+              data['passengers'] ?? [],
+            );
             isLoadingPassengers = false;
           });
         }
       } else {
-        if (mounted) setState(() { isLoadingPassengers = false; });
+        if (mounted)
+          setState(() {
+            isLoadingPassengers = false;
+          });
       }
     } catch (e) {
       print("Error fetching passengers: $e");
-      if (mounted) setState(() { isLoadingPassengers = false; });
+      if (mounted)
+        setState(() {
+          isLoadingPassengers = false;
+        });
     }
   }
 
@@ -86,7 +95,7 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
     final userId = prefs.getString('userId');
     if (userId == null) return;
 
-    socket = IO.io('http://192.168.186.81:5000', <String, dynamic>{
+    socket = IO.io(ApiConfig.baseUrl, <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': false,
     });
@@ -129,7 +138,9 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
     String passengerName = 'Passenger';
     String passengerPhone = '--';
     try {
-      final url = Uri.parse("http://192.168.186.81:5000/api/users/$passengerId");
+      final url = Uri.parse(
+        "${ApiConfig.baseUrl}/api/users/$passengerId",
+      );
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final user = jsonDecode(response.body);
@@ -162,7 +173,7 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
   }
 
   Future<void> _startTrip() async {
-    final url = Uri.parse("http://192.168.186.81:5000/api/rides/start-trip");
+    final url = Uri.parse("${ApiConfig.baseUrl}/api/rides/start-trip");
     try {
       final response = await http.post(
         url,
@@ -170,7 +181,9 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
         body: jsonEncode({"rideId": widget.rideId}),
       );
       if (response.statusCode == 200) {
-        setState(() { rideStarted = true; });
+        setState(() {
+          rideStarted = true;
+        });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("Trip started! Passengers notified.")),
@@ -178,22 +191,22 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
         }
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Error: ${response.body}")),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text("Error: ${response.body}")));
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Network error: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Network error: $e")));
       }
     }
   }
 
   Future<void> _completeRide() async {
-    final url = Uri.parse("http://192.168.186.81:5000/api/rides/complete-ride");
+    final url = Uri.parse("${ApiConfig.baseUrl}/api/rides/complete-ride");
     try {
       final response = await http.post(
         url,
@@ -203,7 +216,9 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
       if (response.statusCode == 200) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Ride completed! Passengers notified.")),
+            const SnackBar(
+              content: Text("Ride completed! Passengers notified."),
+            ),
           );
           Navigator.pushAndRemoveUntil(
             context,
@@ -214,9 +229,9 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Network error: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Network error: $e")));
       }
     }
   }
@@ -250,41 +265,62 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
             child: Stack(
               children: [
                 Positioned(
-                  top: 0, bottom: 0, left: 150,
+                  top: 0,
+                  bottom: 0,
+                  left: 150,
                   child: Container(width: 6, color: Colors.white),
                 ),
                 Positioned(
-                  top: 110, left: 0, right: 0,
+                  top: 110,
+                  left: 0,
+                  right: 0,
                   child: Container(height: 6, color: Colors.white),
                 ),
                 Positioned(
-                  top: 97, left: 138,
+                  top: 97,
+                  left: 138,
                   child: Container(
-                    width: 36, height: 36,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
                       color: const Color(0xFF1A9E6E),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Center(child: Text("🚗", style: TextStyle(fontSize: 18))),
+                    child: const Center(
+                      child: Text("🚗", style: TextStyle(fontSize: 18)),
+                    ),
                   ),
                 ),
                 Positioned(
-                  bottom: 40, left: 210,
-                  child: const Icon(Icons.location_on, color: Color(0xFF1A9E6E), size: 28),
+                  bottom: 40,
+                  left: 210,
+                  child: const Icon(
+                    Icons.location_on,
+                    color: Color(0xFF1A9E6E),
+                    size: 28,
+                  ),
                 ),
                 // Passenger count badge
                 if (passengers.isNotEmpty)
                   Positioned(
-                    top: 50, left: 16,
+                    top: 50,
+                    left: 16,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF1A9E6E).withOpacity(0.95),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         "${passengers.length} passenger${passengers.length > 1 ? 's' : ''} aboard",
-                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -302,7 +338,10 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
                   // Route info
                   Text(
                     "Heading to ${widget.destination}",
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
                   Text(
                     "From ${widget.source}",
@@ -369,10 +408,12 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
 
                   // Passenger cards — REAL DATA
                   if (isLoadingPassengers)
-                    const Center(child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: CircularProgressIndicator(),
-                    ))
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: CircularProgressIndicator(),
+                      ),
+                    )
                   else
                     _buildPassengerCards(),
 
@@ -398,7 +439,9 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
                           ? "No passengers yet — waiting for join requests"
                           : "${passengers.length} passenger(s) joined",
                       style: TextStyle(
-                        color: passengers.isNotEmpty ? const Color(0xFF1A9E6E) : Colors.orange,
+                        color: passengers.isNotEmpty
+                            ? const Color(0xFF1A9E6E)
+                            : Colors.orange,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -412,15 +455,29 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1A9E6E),
                         minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                       onPressed: _startTrip,
-                      child: const Text("Start Trip →", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        "Start Trip →",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
 
                   if (rideStarted) ...[
                     const Center(
-                      child: Text("Trip is in progress", style: TextStyle(color: Color(0xFF1A9E6E), fontWeight: FontWeight.bold)),
+                      child: Text(
+                        "Trip is in progress",
+                        style: TextStyle(
+                          color: Color(0xFF1A9E6E),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 10),
                   ],
@@ -430,14 +487,21 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
                   // Complete / End ride
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: rideStarted ? Colors.red[400] : Colors.grey[300],
+                      backgroundColor: rideStarted
+                          ? Colors.red[400]
+                          : Colors.grey[300],
                       minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                     onPressed: _completeRide,
                     child: Text(
                       rideStarted ? "Complete Ride" : "End Ride Early",
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
@@ -473,7 +537,10 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.grey.shade100),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6),
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 6,
+                  ),
                 ],
               ),
               child: Column(
@@ -484,13 +551,20 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
                     backgroundColor: colors['bg'],
                     child: Text(
                       initials,
-                      style: TextStyle(color: colors['fg'], fontSize: 10, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: colors['fg'],
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     "${name.split(' ').first} ${name.split(' ').length > 1 ? '${name.split(' ').last[0]}.' : ''}",
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
@@ -517,13 +591,23 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
             ),
             child: Column(
               children: [
-                const Text("Earning", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                const Text(
+                  "Earning",
+                  style: TextStyle(fontSize: 10, color: Colors.grey),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   "₹${130 + (passengers.length > 1 ? 48 * (passengers.length - 1) : 0)}",
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A9E6E)),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A9E6E),
+                  ),
                 ),
-                const Text("total", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                const Text(
+                  "total",
+                  style: TextStyle(fontSize: 10, color: Colors.grey),
+                ),
               ],
             ),
           ),
@@ -540,14 +624,18 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
     for (int i = 0; i < passengers.length; i++) {
       final name = passengers[i]['name'] ?? 'Pax';
       final colors = _colorPalette[i % _colorPalette.length];
-      seatTiles.add(_seatTile(name.split(' ').first, colors['bg']!, colors['fg']!));
+      seatTiles.add(
+        _seatTile(name.split(' ').first, colors['bg']!, colors['fg']!),
+      );
     }
 
     // Remaining free seats (assume max 4 total seats)
     final int maxSeats = 4;
     final int freeSeats = maxSeats - 1 - passengers.length; // -1 for driver
     for (int i = 0; i < freeSeats && i < 3; i++) {
-      seatTiles.add(_seatTile("Free", const Color(0xFFF3F4F6), const Color(0xFF9CA3AF)));
+      seatTiles.add(
+        _seatTile("Free", const Color(0xFFF3F4F6), const Color(0xFF9CA3AF)),
+      );
     }
 
     return GridView.count(
@@ -571,7 +659,11 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
       child: Center(
         child: Text(
           label,
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: fg),
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: fg,
+          ),
         ),
       ),
     );

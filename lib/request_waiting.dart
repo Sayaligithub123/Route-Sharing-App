@@ -4,13 +4,16 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'passenger_home.dart';
 import 'ride_confirmed.dart';
-import 'services/route_service.dart';
 
 class RequestWaitingScreen extends StatefulWidget {
   final String requestId;
   final dynamic ride;
 
-  const RequestWaitingScreen({super.key, required this.requestId, required this.ride});
+  const RequestWaitingScreen({
+    super.key,
+    required this.requestId,
+    required this.ride,
+  });
 
   @override
   State<RequestWaitingScreen> createState() => _RequestWaitingScreenState();
@@ -74,7 +77,9 @@ class _RequestWaitingScreenState extends State<RequestWaitingScreen> {
   }
 
   Future<void> _checkRequestStatus() async {
-    final url = Uri.parse("http://192.168.186.81:5000/api/rides/request-status/${widget.requestId}");
+    final url = Uri.parse(
+      "${ApiConfig.baseUrl}/api/rides/request-status/${widget.requestId}",
+    );
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
@@ -106,7 +111,9 @@ class _RequestWaitingScreenState extends State<RequestWaitingScreen> {
     }
 
     try {
-      final url = Uri.parse("http://192.168.186.81:5000/api/rides/ride/$rideId");
+      final url = Uri.parse(
+        "${ApiConfig.baseUrl}/api/rides/ride/$rideId",
+      );
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final rideData = jsonDecode(response.body);
@@ -114,10 +121,8 @@ class _RequestWaitingScreenState extends State<RequestWaitingScreen> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => RideConfirmedScreen(
-                rideId: rideId,
-                rideData: rideData,
-              ),
+              builder: (context) =>
+                  RideConfirmedScreen(rideId: rideId, rideData: rideData),
             ),
           );
         }
@@ -127,10 +132,8 @@ class _RequestWaitingScreenState extends State<RequestWaitingScreen> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => RideConfirmedScreen(
-                rideId: rideId,
-                rideData: widget.ride,
-              ),
+              builder: (context) =>
+                  RideConfirmedScreen(rideId: rideId, rideData: widget.ride),
             ),
           );
         }
@@ -141,10 +144,8 @@ class _RequestWaitingScreenState extends State<RequestWaitingScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => RideConfirmedScreen(
-              rideId: rideId,
-              rideData: widget.ride,
-            ),
+            builder: (context) =>
+                RideConfirmedScreen(rideId: rideId, rideData: widget.ride),
           ),
         );
       }
@@ -155,7 +156,11 @@ class _RequestWaitingScreenState extends State<RequestWaitingScreen> {
     _cancelTimers();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No driver is available on this route. Try again after some time.")),
+        const SnackBar(
+          content: Text(
+            "No driver is available on this route. Try again after some time.",
+          ),
+        ),
       );
       Navigator.pushAndRemoveUntil(
         context,
@@ -169,7 +174,11 @@ class _RequestWaitingScreenState extends State<RequestWaitingScreen> {
     _cancelTimers();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No driver is available on this route. Try again after some time.")),
+        const SnackBar(
+          content: Text(
+            "No driver is available on this route. Try again after some time.",
+          ),
+        ),
       );
       Navigator.pushAndRemoveUntil(
         context,
@@ -230,7 +239,10 @@ class _RequestWaitingScreenState extends State<RequestWaitingScreen> {
               ),
               child: Text(
                 "$_timeLeft",
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
 

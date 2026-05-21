@@ -1,9 +1,9 @@
-
 import 'package:flutter/material.dart';
 import 'Driver_Active_Ride.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'services/api_config.dart';
 
 class StartRideScreen extends StatefulWidget {
   const StartRideScreen({super.key});
@@ -28,7 +28,9 @@ class _StartRideScreenState extends State<StartRideScreen> {
           children: [
             // Source Input
             TextField(
-              decoration: const InputDecoration(hintText: "Enter pickup location (source)"),
+              decoration: const InputDecoration(
+                hintText: "Enter pickup location (source)",
+              ),
               onChanged: (value) {
                 source = value;
               },
@@ -81,7 +83,11 @@ class _StartRideScreenState extends State<StartRideScreen> {
               ),
               onPressed: () async {
                 if (source.isEmpty || destination.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please enter both source and destination")));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Please enter both source and destination"),
+                    ),
+                  );
                   return;
                 }
 
@@ -89,12 +95,18 @@ class _StartRideScreenState extends State<StartRideScreen> {
                 final driverId = prefs.getString('userId');
                 if (driverId == null) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error: Driver ID not found")));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Error: Driver ID not found"),
+                      ),
+                    );
                   }
                   return;
                 }
 
-                final url = Uri.parse("http://192.168.186.81:5000/api/rides/start");
+                final url = Uri.parse(
+                  "${ApiConfig.baseUrl}/api/rides/start",
+                );
                 try {
                   final response = await http.post(
                     url,
@@ -106,7 +118,8 @@ class _StartRideScreenState extends State<StartRideScreen> {
                       "availableSeats": selectedSeats,
                     }),
                   );
-                  if (response.statusCode == 201 || response.statusCode == 200) {
+                  if (response.statusCode == 201 ||
+                      response.statusCode == 200) {
                     final data = jsonDecode(response.body);
                     final rideId = data['ride']['_id'];
                     if (context.mounted) {
@@ -123,12 +136,16 @@ class _StartRideScreenState extends State<StartRideScreen> {
                     }
                   } else {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: ${response.body}")));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Error: ${response.body}")),
+                      );
                     }
                   }
-                } catch(e) {
+                } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Network error: $e")));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Network error: $e")),
+                    );
                   }
                 }
               },

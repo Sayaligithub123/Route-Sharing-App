@@ -5,11 +5,16 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'services/route_service.dart';
+import 'services/api_config.dart';
 
 class RidesScreen extends StatefulWidget {
   final String source;
   final String destination;
-  const RidesScreen({super.key, required this.source, required this.destination});
+  const RidesScreen({
+    super.key,
+    required this.source,
+    required this.destination,
+  });
 
   @override
   State<RidesScreen> createState() => _RidesScreenState();
@@ -19,7 +24,7 @@ class _RidesScreenState extends State<RidesScreen> {
   List<dynamic> rides = [];
   bool isLoading = true;
   String? requestingRideId;
-  
+
   String routeDistance = "";
   String routeDuration = "";
   bool isCalculatingRoute = true;
@@ -32,7 +37,10 @@ class _RidesScreenState extends State<RidesScreen> {
   }
 
   Future<void> calculateRouteInfo() async {
-    final info = await RouteService.calculateRoute(widget.source, widget.destination);
+    final info = await RouteService.calculateRoute(
+      widget.source,
+      widget.destination,
+    );
     if (mounted) {
       setState(() {
         if (info != null) {
@@ -48,7 +56,9 @@ class _RidesScreenState extends State<RidesScreen> {
   }
 
   Future<void> fetchRides() async {
-    final url = Uri.parse("http://192.168.186.81:5000/api/rides/search?source=${widget.source}&destination=${widget.destination}");
+    final url = Uri.parse(
+      "${ApiConfig.baseUrl}/api/rides/search?source=${widget.source}&destination=${widget.destination}",
+    );
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
@@ -57,12 +67,22 @@ class _RidesScreenState extends State<RidesScreen> {
           isLoading = false;
         });
       } else {
-        setState(() { isLoading = false; });
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error fetching rides: ${response.body}")));
+        setState(() {
+          isLoading = false;
+        });
+        if (mounted)
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Error fetching rides: ${response.body}")),
+          );
       }
-    } catch(e) {
-      setState(() { isLoading = false; });
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Network Error: $e")));
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Network Error: $e")));
     }
   }
 
@@ -102,14 +122,20 @@ class _RidesScreenState extends State<RidesScreen> {
                       children: [
                         Text(
                           "${widget.source} → ${widget.destination}",
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         if (isCalculatingRoute)
                           const SizedBox(
                             width: 12,
                             height: 12,
-                            child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.green),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.5,
+                              color: Colors.green,
+                            ),
                           )
                         else
                           Text(
@@ -147,13 +173,13 @@ class _RidesScreenState extends State<RidesScreen> {
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : rides.isEmpty
-                      ? const Center(child: Text("No rides available yet"))
-                      : ListView.builder(
-                          itemCount: rides.length,
-                          itemBuilder: (context, index) {
-                            return buildRideCard(context, rides[index]);
-                          },
-                        ),
+                  ? const Center(child: Text("No rides available yet"))
+                  : ListView.builder(
+                      itemCount: rides.length,
+                      itemBuilder: (context, index) {
+                        return buildRideCard(context, rides[index]);
+                      },
+                    ),
             ),
           ],
         ),
@@ -210,7 +236,9 @@ class _RidesScreenState extends State<RidesScreen> {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: rideStatus == 'in_progress' ? Colors.orange : Colors.green,
+                    color: rideStatus == 'in_progress'
+                        ? Colors.orange
+                        : Colors.green,
                   ),
                 ),
               ),
@@ -226,7 +254,10 @@ class _RidesScreenState extends State<RidesScreen> {
               const SizedBox(width: 4),
               Text(
                 "$currentPassengers/$totalSeats passengers",
-                style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  color: Colors.grey[700],
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               const SizedBox(width: 12),
               Icon(Icons.directions_car, size: 16, color: Colors.grey[600]),
@@ -258,60 +289,97 @@ class _RidesScreenState extends State<RidesScreen> {
             width: double.infinity,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-              onPressed: requestingRideId == ride['_id'] ? null : () async {
-                setState(() {
-                  requestingRideId = ride['_id'];
-                });
-                
-                final prefs = await SharedPreferences.getInstance();
-                final passengerId = prefs.getString('userId');
-                
-                if (passengerId == null) {
-                  setState(() { requestingRideId = null; });
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error: User ID not found")));
-                  return;
-                }
-                
-                final url = Uri.parse("http://192.168.186.81:5000/api/rides/request");
-                try {
-                  final response = await http.post(
-                    url,
-                    headers: {"Content-Type": "application/json"},
-                    body: jsonEncode({
-                      "rideId": ride['_id'],
-                      "passengerId": passengerId,
-                      "pickupLocation": widget.source,
-                      "dropLocation": widget.destination,
-                    }),
-                  );
-                  
-                  setState(() { requestingRideId = null; });
-                  
-                  if (response.statusCode == 201 || response.statusCode == 200) {
-                    final data = jsonDecode(response.body);
-                    if (mounted) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => RequestWaitingScreen(
-                            requestId: data['request']['_id'],
-                            ride: ride,
-                          ),
-                        ),
+              onPressed: requestingRideId == ride['_id']
+                  ? null
+                  : () async {
+                      setState(() {
+                        requestingRideId = ride['_id'];
+                      });
+
+                      final prefs = await SharedPreferences.getInstance();
+                      final passengerId = prefs.getString('userId');
+
+                      if (passengerId == null) {
+                        setState(() {
+                          requestingRideId = null;
+                        });
+                        if (mounted)
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Error: User ID not found"),
+                            ),
+                          );
+                        return;
+                      }
+
+                      final url = Uri.parse(
+                        "${ApiConfig.baseUrl}/api/rides/request",
                       );
-                    }
-                  } else {
-                    final errorData = jsonDecode(response.body);
-                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: ${errorData['error'] ?? response.body}")));
-                  }
-                } catch(e) {
-                  setState(() { requestingRideId = null; });
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Network Error: $e")));
-                }
-              },
+                      try {
+                        final response = await http.post(
+                          url,
+                          headers: {"Content-Type": "application/json"},
+                          body: jsonEncode({
+                            "rideId": ride['_id'],
+                            "passengerId": passengerId,
+                            "pickupLocation": widget.source,
+                            "dropLocation": widget.destination,
+                          }),
+                        );
+
+                        setState(() {
+                          requestingRideId = null;
+                        });
+
+                        if (response.statusCode == 201 ||
+                            response.statusCode == 200) {
+                          final data = jsonDecode(response.body);
+                          if (mounted) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => RequestWaitingScreen(
+                                  requestId: data['request']['_id'],
+                                  ride: ride,
+                                ),
+                              ),
+                            );
+                          }
+                        } else {
+                          final errorData = jsonDecode(response.body);
+                          if (mounted)
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  "Error: ${errorData['error'] ?? response.body}",
+                                ),
+                              ),
+                            );
+                        }
+                      } catch (e) {
+                        setState(() {
+                          requestingRideId = null;
+                        });
+                        if (mounted)
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Network Error: $e")),
+                          );
+                      }
+                    },
               child: requestingRideId == ride['_id']
-                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : Text(seats > 0 ? "Request to Join ($seats seats left)" : "Full"),
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Text(
+                      seats > 0
+                          ? "Request to Join ($seats seats left)"
+                          : "Full",
+                    ),
             ),
           ),
         ],

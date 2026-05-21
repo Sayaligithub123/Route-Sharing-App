@@ -4,6 +4,7 @@ import 'Driver_homepage.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'services/api_config.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   final String role;
@@ -38,8 +39,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       return false;
     }
 
-    final url = Uri.parse("http://192.168.186.81:5000/api/users/create");
-
+    final url = Uri.parse("${ApiConfig.baseUrl}/api/users/create");
 
     try {
       final response = await http.post(
@@ -64,20 +64,22 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
         print("Saved: $data");
-        
+
         // Save to SharedPreferences
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('userId', data['_id']);
         await prefs.setString('role', data['role']);
         await prefs.setString('userData', jsonEncode(data));
-        
+
         return true;
       } else {
-        print("Error saving profile: ${response.statusCode} - ${response.body}");
+        print(
+          "Error saving profile: ${response.statusCode} - ${response.body}",
+        );
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Error: ${response.body}")),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text("Error: ${response.body}")));
         }
         return false;
       }
@@ -85,7 +87,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       print("Exception during saveProfile: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Network error: Check if backend is running.")),
+          SnackBar(
+            content: Text("Network error: Check if backend is running."),
+          ),
         );
       }
       return false;
@@ -138,17 +142,31 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 return null;
               }),
               buildFormField("PHONE", phoneController, (value) {
-                if (value == null || value.isEmpty) return 'Phone number is required';
+                if (value == null || value.isEmpty)
+                  return 'Phone number is required';
                 final numeric = RegExp(r'^\d{10,15}');
-                if (!numeric.hasMatch(value)) return 'Enter a valid phone number';
+                if (!numeric.hasMatch(value))
+                  return 'Enter a valid phone number';
                 return null;
               }),
               const SizedBox(height: 20),
               // Driver Fields
               if (widget.role == "Driver") ...[
-                buildFormField("VEHICLE NAME", vehicleNameController, (value) => null),
-                buildFormField("VEHICLE NUMBER", vehicleNumberController, (value) => null),
-                buildFormField("DRIVING LICENSE", licenseController, (value) => null),
+                buildFormField(
+                  "VEHICLE NAME",
+                  vehicleNameController,
+                  (value) => null,
+                ),
+                buildFormField(
+                  "VEHICLE NUMBER",
+                  vehicleNumberController,
+                  (value) => null,
+                ),
+                buildFormField(
+                  "DRIVING LICENSE",
+                  licenseController,
+                  (value) => null,
+                ),
                 const SizedBox(height: 20),
               ],
               const SizedBox(height: 20),
@@ -158,33 +176,38 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   backgroundColor: Colors.green,
                   padding: const EdgeInsets.symmetric(vertical: 15),
                 ),
-                onPressed: isLoading ? null : () async {
-                  setState(() {
-                    isLoading = true;
-                  });
-                  
-                  bool success = await saveProfile();
+                onPressed: isLoading
+                    ? null
+                    : () async {
+                        setState(() {
+                          isLoading = true;
+                        });
 
-                  setState(() {
-                    isLoading = false;
-                  });
+                        bool success = await saveProfile();
 
-                  if (success && mounted) {
-                    final nextScreen = widget.role == "Driver"
-                        ? const DriverHomeScreen()
-                        : const PassengerHomeScreen();
+                        setState(() {
+                          isLoading = false;
+                        });
 
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (context) => nextScreen),
-                    );
-                  }
-                },
-                child: isLoading 
+                        if (success && mounted) {
+                          final nextScreen = widget.role == "Driver"
+                              ? const DriverHomeScreen()
+                              : const PassengerHomeScreen();
+
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (context) => nextScreen),
+                          );
+                        }
+                      },
+                child: isLoading
                     ? const SizedBox(
                         height: 20,
                         width: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
                       )
                     : const Text("Complete Setup →"),
               ),
@@ -195,7 +218,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     );
   }
 
-  Widget buildFormField(String label, TextEditingController controller, String? Function(String?) validator) {
+  Widget buildFormField(
+    String label,
+    TextEditingController controller,
+    String? Function(String?) validator,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: TextFormField(
@@ -208,5 +235,4 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       ),
     );
   }
-
 }

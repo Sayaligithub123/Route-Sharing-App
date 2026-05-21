@@ -3,12 +3,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'live_traker.dart';
 import 'passenger_home.dart';
+import 'services/api_config.dart';
 
 class RideConfirmedScreen extends StatefulWidget {
   final String rideId;
   final dynamic rideData;
 
-  const RideConfirmedScreen({super.key, required this.rideId, required this.rideData});
+  const RideConfirmedScreen({
+    super.key,
+    required this.rideId,
+    required this.rideData,
+  });
 
   @override
   State<RideConfirmedScreen> createState() => _RideConfirmedScreenState();
@@ -47,7 +52,7 @@ class _RideConfirmedScreenState extends State<RideConfirmedScreen> {
     final userId = prefs.getString('userId');
     if (userId == null) return;
 
-    socket = IO.io('http://192.168.186.81:5000', <String, dynamic>{
+    socket = IO.io(ApiConfig.baseUrl, <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': false,
     });
@@ -146,8 +151,16 @@ class _RideConfirmedScreenState extends State<RideConfirmedScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(driverName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            Text(vehicleName, style: const TextStyle(color: Colors.grey)),
+                            Text(
+                              driverName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              vehicleName,
+                              style: const TextStyle(color: Colors.grey),
+                            ),
                           ],
                         ),
 
@@ -188,7 +201,10 @@ class _RideConfirmedScreenState extends State<RideConfirmedScreen> {
                         const SizedBox(height: 10),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: const [Text("Status"), Text("Waiting for driver to start")],
+                          children: const [
+                            Text("Status"),
+                            Text("Waiting for driver to start"),
+                          ],
                         ),
                       ],
                     ),

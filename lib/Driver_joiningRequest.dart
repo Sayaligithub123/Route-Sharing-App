@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'services/api_config.dart';
 
 class JoinRequestModal extends StatefulWidget {
   final String requestId;
@@ -26,42 +27,44 @@ class _JoinRequestModalState extends State<JoinRequestModal> {
   bool isLoading = false;
 
   Future<void> _respond(String status) async {
-    setState(() { isLoading = true; });
+    setState(() {
+      isLoading = true;
+    });
 
-    final url = Uri.parse("http://192.168.186.81:5000/api/rides/respond");
+    final url = Uri.parse("${ApiConfig.baseUrl}/api/rides/respond");
     try {
       final response = await http.post(
         url,
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "requestId": widget.requestId,
-          "status": status,
-        }),
+        body: jsonEncode({"requestId": widget.requestId, "status": status}),
       );
 
       if (response.statusCode == 200) {
         widget.onResponded?.call(status == "accepted");
         if (mounted) {
           Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Request ${status}!")),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text("Request ${status}!")));
         }
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Error: ${response.body}")),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text("Error: ${response.body}")));
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Network error: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Network error: $e")));
       }
     }
-    if (mounted) setState(() { isLoading = false; });
+    if (mounted)
+      setState(() {
+        isLoading = false;
+      });
   }
 
   @override
@@ -139,7 +142,10 @@ class _JoinRequestModalState extends State<JoinRequestModal> {
                             SizedBox(width: 4),
                             Text(
                               widget.phone,
-                              style: TextStyle(fontSize: 12, color: Colors.grey),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
                             ),
                           ],
                         ),
@@ -154,7 +160,12 @@ class _JoinRequestModalState extends State<JoinRequestModal> {
 
                 Divider(height: 20),
 
-                _fareRow("Extra you earn", "+₹48", isGreen: true, bigFont: true),
+                _fareRow(
+                  "Extra you earn",
+                  "+₹48",
+                  isGreen: true,
+                  bigFont: true,
+                ),
                 _fareRow("Detour added", "~3 min"),
               ],
             ),
@@ -201,13 +212,21 @@ class _JoinRequestModalState extends State<JoinRequestModal> {
     );
   }
 
-  Widget _fareRow(String label, String value, {bool isGreen = false, bool bigFont = false}) {
+  Widget _fareRow(
+    String label,
+    String value, {
+    bool isGreen = false,
+    bool bigFont = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+          Text(
+            label,
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+          ),
           Text(
             value,
             style: TextStyle(
