@@ -1,3 +1,8 @@
+require('dns').setDefaultResultOrder('ipv4first');
+const dns = require('dns');
+dns.setDefaultResultOrder('ipv4first');
+dns.setServers(['8.8.8.8', '8.8.4.4']); // Use Google DNS to fix querySrv ECONNREFUSED
+
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -8,10 +13,13 @@ require("dotenv").config();
 const app = express();
 const server = http.createServer(app);
 
+// Use PORT from .env or fallback
+const PORT = process.env.PORT || 5001;
+
 // Initialize Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: "*", // Adjust this in production
+    origin: "*",
     methods: ["GET", "POST"]
   }
 });
@@ -29,28 +37,46 @@ app.use(express.json());
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
 
-  // Clients emit this to join their respective room
   socket.on("join_room", ({ userId, role }) => {
+
     if (role === "Driver") {
+
       socket.join(`driver_${userId}`);
-      const roomSize = io.sockets.adapter.rooms.get(`driver_${userId}`)?.size || 0;
-      console.log(`[join_room] Driver ${userId} (socket: ${socket.id}) joined room driver_${userId} (${roomSize} socket(s) in room)`);
+
+      const roomSize =
+        io.sockets.adapter.rooms.get(`driver_${userId}`)?.size || 0;
+
+      console.log(
+        `[join_room] Driver ${userId} joined room driver_${userId} (${roomSize} socket(s))`
+      );
+
     } else if (role === "Passenger") {
+
       socket.join(`passenger_${userId}`);
-      const roomSize = io.sockets.adapter.rooms.get(`passenger_${userId}`)?.size || 0;
-      console.log(`[join_room] Passenger ${userId} (socket: ${socket.id}) joined room passenger_${userId} (${roomSize} socket(s) in room)`);
+
+      const roomSize =
+        io.sockets.adapter.rooms.get(`passenger_${userId}`)?.size || 0;
+
+      console.log(
+        `[join_room] Passenger ${userId} joined room passenger_${userId} (${roomSize} socket(s))`
+      );
     }
   });
 
-  // Driver emits live location via socket (alternative to REST)
+  // Driver live location update
   socket.on("driver_location_update", ({ rideId, lat, lng, passengerIds }) => {
-    console.log(`Driver location update for ride ${rideId}: ${lat}, ${lng}`);
+
+    console.log(`Driver location update: ${lat}, ${lng}`);
+
     if (passengerIds && Array.isArray(passengerIds)) {
-      passengerIds.forEach(passengerId => {
+
+      passengerIds.forEach((passengerId) => {
+
         io.to(`passenger_${passengerId}`).emit("location_update", {
           rideId,
           location: { lat, lng },
         });
+
       });
     }
   });
@@ -65,13 +91,20 @@ const userRoutes = require("./routes/userRoutes");
 const rideRoutes = require("./routes/rideRoutes");
 
 app.use("/api/users", userRoutes);
-app.use("/api/rides", rideRoutes); // Mount ride routes
+app.use("/api/rides", rideRoutes);
 
-// Connect DB
+// MongoDB Connection
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB Connected"))
-  .catch(err => console.log(err));
+  .then(() => {
+    console.log("MongoDB Connected");
 
-server.listen(process.env.PORT || 5000, () => {
-  console.log(`Server running on port ${process.env.PORT || 5000}`);
-});
+    // Start server only after DB connection
+    server.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+
+  })
+  .catch((err) => {
+    console.log("MongoDB Connection Error:");
+    console.log(err);
+  });

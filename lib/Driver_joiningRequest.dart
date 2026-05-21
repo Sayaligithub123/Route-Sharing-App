@@ -28,7 +28,7 @@ class _JoinRequestModalState extends State<JoinRequestModal> {
   Future<void> _respond(String status) async {
     setState(() { isLoading = true; });
 
-    final url = Uri.parse("http://192.168.31.52:5000/api/rides/respond");
+    final url = Uri.parse("http://192.168.186.81:5000/api/rides/respond");
     try {
       final response = await http.post(
         url,

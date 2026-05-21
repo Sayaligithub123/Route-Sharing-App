@@ -94,7 +94,7 @@ class _StartRideScreenState extends State<StartRideScreen> {
                   return;
                 }
 
-                final url = Uri.parse("http://192.168.31.52:5000/api/rides/start");
+                final url = Uri.parse("http://192.168.186.81:5000/api/rides/start");
                 try {
                   final response = await http.post(
                     url,

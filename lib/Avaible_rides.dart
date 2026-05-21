@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'services/route_service.dart';
+
 class RidesScreen extends StatefulWidget {
   final String source;
   final String destination;
@@ -17,15 +19,36 @@ class _RidesScreenState extends State<RidesScreen> {
   List<dynamic> rides = [];
   bool isLoading = true;
   String? requestingRideId;
+  
+  String routeDistance = "";
+  String routeDuration = "";
+  bool isCalculatingRoute = true;
 
   @override
   void initState() {
     super.initState();
     fetchRides();
+    calculateRouteInfo();
+  }
+
+  Future<void> calculateRouteInfo() async {
+    final info = await RouteService.calculateRoute(widget.source, widget.destination);
+    if (mounted) {
+      setState(() {
+        if (info != null) {
+          routeDistance = "${info['distance'].toStringAsFixed(1)} km";
+          routeDuration = "${info['duration'].toStringAsFixed(0)} mins";
+        } else {
+          routeDistance = "Could not calculate";
+          routeDuration = "N/A";
+        }
+        isCalculatingRoute = false;
+      });
+    }
   }
 
   Future<void> fetchRides() async {
-    final url = Uri.parse("http://192.168.31.52:5000/api/rides/search?source=${widget.source}&destination=${widget.destination}");
+    final url = Uri.parse("http://192.168.186.81:5000/api/rides/search?source=${widget.source}&destination=${widget.destination}");
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
@@ -74,9 +97,30 @@ class _RidesScreenState extends State<RidesScreen> {
                   const Icon(Icons.location_on, color: Colors.green),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      "${widget.source} → ${widget.destination}",
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "${widget.source} → ${widget.destination}",
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                        ),
+                        const SizedBox(height: 4),
+                        if (isCalculatingRoute)
+                          const SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.green),
+                          )
+                        else
+                          Text(
+                            "Driving Distance: $routeDistance | Est. Time: $routeDuration",
+                            style: TextStyle(
+                              color: Colors.grey[800],
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ],
@@ -228,7 +272,7 @@ class _RidesScreenState extends State<RidesScreen> {
                   return;
                 }
                 
-                final url = Uri.parse("http://192.168.31.52:5000/api/rides/request");
+                final url = Uri.parse("http://192.168.186.81:5000/api/rides/request");
                 try {
                   final response = await http.post(
                     url,

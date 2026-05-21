@@ -38,7 +38,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       return false;
     }
 
-    final url = Uri.parse("http://192.168.31.52:5000/api/users/create");
+    final url = Uri.parse("http://192.168.186.81:5000/api/users/create");
 
 
     try {
