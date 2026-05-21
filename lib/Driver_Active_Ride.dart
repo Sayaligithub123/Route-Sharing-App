@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'Driver_joiningRequest.dart';
 import 'Driver_homepage.dart';
+import 'services/route_service.dart';
 
 class ActiveRideScreen extends StatefulWidget {
   final String rideId;
@@ -30,11 +31,33 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
   List<Map<String, dynamic>> passengers = [];
   bool isLoadingPassengers = true;
 
+  // Distance calculation
+  String routeDistance = "";
+  String routeDuration = "";
+  bool isCalculatingRoute = true;
+
   @override
   void initState() {
     super.initState();
     _fetchPassengers();
     _connectSocket();
+    _calculateRouteInfo();
+  }
+
+  Future<void> _calculateRouteInfo() async {
+    final info = await RouteService.calculateRoute(widget.source, widget.destination);
+    if (mounted) {
+      setState(() {
+        if (info != null) {
+          routeDistance = "${info['distance'].toStringAsFixed(1)} km";
+          routeDuration = "${info['duration'].toStringAsFixed(0)} mins";
+        } else {
+          routeDistance = "Could not calculate";
+          routeDuration = "N/A";
+        }
+        isCalculatingRoute = false;
+      });
+    }
   }
 
   Future<void> _fetchPassengers() async {
@@ -284,6 +307,62 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
                   Text(
                     "From ${widget.source}",
                     style: const TextStyle(color: Colors.grey),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // 🔹 Distance & Duration display
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A9E6E).withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFF1A9E6E).withOpacity(0.3)),
+                    ),
+                    child: isCalculatingRoute
+                        ? Row(
+                            children: const [
+                              SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 1.5,
+                                  color: Color(0xFF1A9E6E),
+                                ),
+                              ),
+                              SizedBox(width: 10),
+                              Text(
+                                "Calculating route...",
+                                style: TextStyle(fontSize: 12, color: Color(0xFF1A9E6E)),
+                              ),
+                            ],
+                          )
+                        : Row(
+                            children: [
+                              const Icon(Icons.route, size: 18, color: Color(0xFF1A9E6E)),
+                              const SizedBox(width: 8),
+                              Text(
+                                "🛣️ $routeDistance",
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1A9E6E),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              const Icon(Icons.access_time, size: 18, color: Color(0xFF1A9E6E)),
+                              const SizedBox(width: 4),
+                              Text(
+                                "⏱️ $routeDuration",
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1A9E6E),
+                                ),
+                              ),
+                            ],
+                          ),
                   ),
 
                   const SizedBox(height: 12),

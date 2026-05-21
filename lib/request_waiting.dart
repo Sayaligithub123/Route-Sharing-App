@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'passenger_home.dart';
 import 'ride_confirmed.dart';
+import 'services/route_service.dart';
 
 class RequestWaitingScreen extends StatefulWidget {
   final String requestId;
@@ -20,10 +21,38 @@ class _RequestWaitingScreenState extends State<RequestWaitingScreen> {
   Timer? _countdownTimer;
   Timer? _pollingTimer;
 
+  // Distance calculation
+  String routeDistance = "";
+  String routeDuration = "";
+  bool isCalculatingRoute = true;
+
   @override
   void initState() {
     super.initState();
     _startTimers();
+    _calculateRouteInfo();
+  }
+
+  Future<void> _calculateRouteInfo() async {
+    final source = widget.ride['source'] ?? '';
+    final destination = widget.ride['destination'] ?? '';
+    if (source.isEmpty || destination.isEmpty) {
+      setState(() { isCalculatingRoute = false; });
+      return;
+    }
+    final info = await RouteService.calculateRoute(source, destination);
+    if (mounted) {
+      setState(() {
+        if (info != null) {
+          routeDistance = "${info['distance'].toStringAsFixed(1)} km";
+          routeDuration = "${info['duration'].toStringAsFixed(0)} mins";
+        } else {
+          routeDistance = "N/A";
+          routeDuration = "N/A";
+        }
+        isCalculatingRoute = false;
+      });
+    }
   }
 
   void _startTimers() {
@@ -228,6 +257,26 @@ class _RequestWaitingScreenState extends State<RequestWaitingScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [const Text("Pickup ETA"), Text("--")],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("🛣️ Distance"),
+                      isCalculatingRoute
+                          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.5))
+                          : Text(routeDistance, style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1A9E6E))),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("⏱️ Est. Time"),
+                      isCalculatingRoute
+                          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.5))
+                          : Text(routeDuration, style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1A9E6E))),
+                    ],
                   ),
                 ],
               ),
