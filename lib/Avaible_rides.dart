@@ -191,6 +191,13 @@ class _RidesScreenState extends State<RidesScreen> {
     return Chip(label: Text(label), backgroundColor: Colors.grey[200]);
   }
 
+  double? getDistanceValue() {
+    if (routeDistance.contains(" km")) {
+      return double.tryParse(routeDistance.replaceAll(" km", "").trim());
+    }
+    return null;
+  }
+
   Widget buildRideCard(BuildContext context, dynamic ride) {
     final driver = ride['driverId'] ?? {};
     final driverName = driver['name'] ?? 'Unknown Driver';
@@ -200,6 +207,27 @@ class _RidesScreenState extends State<RidesScreen> {
     final totalSeats = seats + currentPassengers;
     final rideStatus = ride['status'] ?? 'active';
     final passengers = ride['passengers'] as List<dynamic>? ?? [];
+
+    // Dynamic Split Fare estimation for this ride
+    double? dist = getDistanceValue();
+    int? soloEst;
+    int? sharedEst;
+    int? savings;
+    int prospectivePaxCount = currentPassengers + 1;
+    
+    if (dist != null) {
+      soloEst = (40 + 12 * dist).round();
+      double discountFactor = 1.0;
+      if (prospectivePaxCount == 2) {
+        discountFactor = 0.70;
+      } else if (prospectivePaxCount == 3) {
+        discountFactor = 0.55;
+      } else if (prospectivePaxCount >= 4) {
+        discountFactor = 0.40;
+      }
+      sharedEst = (soloEst * discountFactor).round();
+      savings = soloEst - sharedEst;
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
@@ -280,6 +308,79 @@ class _RidesScreenState extends State<RidesScreen> {
                   visualDensity: VisualDensity.compact,
                 );
               }).toList(),
+            ),
+          ],
+
+          // Dynamic Fare Estimate inside Card
+          if (sharedEst != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.green.withOpacity(0.15)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        currentPassengers > 0 
+                            ? "Co-Ride Split Fare ($prospectivePaxCount riders)" 
+                            : "Solo Fare (Becomes cheaper if others join!)",
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: currentPassengers > 0 ? Colors.green : Colors.grey[700],
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          if (currentPassengers > 0) ...[
+                            Text(
+                              "₹$soloEst",
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey,
+                                decoration: TextDecoration.lineThrough,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
+                          Text(
+                            "₹$sharedEst",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: currentPassengers > 0 ? Colors.green : Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  if (currentPassengers > 0 && savings != null && savings > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        "Save ₹$savings!",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ],
 

@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'passenger_home.dart';
 import 'ride_confirmed.dart';
+import 'services/api_config.dart';
+import 'services/route_service.dart';
 
 class RequestWaitingScreen extends StatefulWidget {
   final String requestId;
@@ -199,124 +201,270 @@ class _RequestWaitingScreenState extends State<RequestWaitingScreen> {
     super.dispose();
   }
 
+  double? _getDistanceValue() {
+    if (routeDistance.contains(" km")) {
+      return double.tryParse(routeDistance.replaceAll(" km", "").trim());
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
+    double? dist = _getDistanceValue();
+    String fareText = "₹--";
+    if (dist != null) {
+      final currentPassengers = widget.ride['currentPassengerCount'] ?? 0;
+      final prospectivePaxCount = currentPassengers + 1;
+      final soloEst = (40 + 12 * dist).round();
+      double discountFactor = 1.0;
+      if (prospectivePaxCount == 2) {
+        discountFactor = 0.70;
+      } else if (prospectivePaxCount == 3) {
+        discountFactor = 0.55;
+      } else if (prospectivePaxCount >= 4) {
+        discountFactor = 0.40;
+      }
+      final sharedEst = (soloEst * discountFactor).round();
+      if (currentPassengers > 0) {
+        fareText = "₹$sharedEst (Co-ride Split)";
+      } else {
+        fareText = "₹$soloEst (Solo)";
+      }
+    }
+
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.hourglass_empty, size: 60, color: Colors.orange),
-
-            const SizedBox(height: 20),
-
-            const Text(
-              "Request Sent!",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-
-            const SizedBox(height: 10),
-
-            const Text(
-              "Waiting for driver & co-riders to accept",
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
-            ),
-
-            const SizedBox(height: 30),
-
-            // Timer UI
-            Container(
-              height: 80,
-              width: 80,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.orange, width: 3),
-              ),
-              child: Text(
-                "$_timeLeft",
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            const Text("Expires soon", style: TextStyle(color: Colors.grey)),
-
-            const SizedBox(height: 30),
-
-            // Fare Box
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: const [Text("Your fare"), Text("₹--")],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [const Text("Pickup ETA"), Text("--")],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text("🛣️ Distance"),
-                      isCalculatingRoute
-                          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.5))
-                          : Text(routeDistance, style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1A9E6E))),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text("⏱️ Est. Time"),
-                      isCalculatingRoute
-                          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.5))
-                          : Text(routeDuration, style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1A9E6E))),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 30),
-
-            // Cancel Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey[300],
-                ),
-                onPressed: () {
-                  _cancelTimers();
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const PassengerHomeScreen(),
+      backgroundColor: Colors.grey[50],
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.blue.shade50,
+              Colors.white,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Spacer(),
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      height: 120,
+                      width: 120,
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade600),
+                        strokeWidth: 3,
+                      ),
                     ),
-                    (route) => false,
-                  );
-                },
-                child: const Text("Cancel Request"),
-              ),
+                    Container(
+                      height: 96,
+                      width: 96,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blue.withOpacity(0.1),
+                            spreadRadius: 8,
+                            blurRadius: 16,
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          "$_timeLeft",
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade800,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                const Text(
+                  "Finding Your Ride...",
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1E293B),
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  "Connecting with drivers & co-riders on your route",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Color(0xFF475569),
+                    height: 1.4,
+                  ),
+                ),
+                const Spacer(),
+                Card(
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: Colors.blueGrey.shade100, width: 1.5),
+                  ),
+                  color: Colors.white,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Estimated Fare",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                            Text(
+                              fareText,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF10B981),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12.0),
+                          child: Divider(height: 1),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Pickup ETA",
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                            Text(
+                              "~3 mins",
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "🛣️ Distance",
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                            isCalculatingRoute
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 1.5,
+                                    ),
+                                  )
+                                : Text(
+                                    routeDistance,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                  ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "⏱️ Est. Travel Time",
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                            isCalculatingRoute
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 1.5,
+                                    ),
+                                  )
+                                : Text(
+                                    routeDuration,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                  ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade50,
+                      foregroundColor: Colors.red.shade700,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      _cancelTimers();
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PassengerHomeScreen(),
+                        ),
+                        (route) => false,
+                      );
+                    },
+                    child: const Text(
+                      "Cancel Request",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const Spacer(),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

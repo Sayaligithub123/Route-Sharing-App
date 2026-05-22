@@ -29,6 +29,10 @@ const rideSchema = new mongoose.Schema({
     },
     pickupLocation: String,
     dropLocation: String,
+    distance: { type: Number, default: 0 },
+    soloFare: { type: Number, default: 0 },
+    sharedFare: { type: Number, default: 0 },
+    savings: { type: Number, default: 0 }
   }],
   status: {
     type: String,
@@ -39,6 +43,9 @@ const rideSchema = new mongoose.Schema({
     lat: { type: Number, default: null },
     lng: { type: Number, default: null },
   },
+  totalFaresCollected: { type: Number, default: 0 },
+  driverEarnings: { type: Number, default: 0 },
+  platformCommission: { type: Number, default: 0 }
 }, { timestamps: true });
 
 module.exports = mongoose.model("Ride", rideSchema);

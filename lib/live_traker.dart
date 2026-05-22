@@ -166,13 +166,28 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     );
   }
 
-  void _navigateToComplete() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => RideCompleteScreen(rideData: widget.rideData),
-      ),
-    );
+  Future<void> _navigateToComplete() async {
+    dynamic finalRideData = widget.rideData;
+    try {
+      final url = Uri.parse(
+        "${ApiConfig.baseUrl}/api/rides/ride/${widget.rideId}",
+      );
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        finalRideData = jsonDecode(response.body);
+      }
+    } catch (e) {
+      print("Error fetching final ride details: $e");
+    }
+
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => RideCompleteScreen(rideData: finalRideData),
+        ),
+      );
+    }
   }
 
   @override
@@ -185,6 +200,14 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   @override
   Widget build(BuildContext context) {
     final bool isSharedRide = passengers.length > 1;
+
+    // Extract current user fare details dynamically
+    final myInfo = passengers.firstWhere(
+      (p) => currentUserId != null && p['_id'].toString() == currentUserId.toString(),
+      orElse: () => <String, dynamic>{},
+    );
+    final mySharedFare = myInfo['sharedFare'] ?? (passengers.length > 1 ? 82 : 130);
+    final mySavings = myInfo['savings'] ?? (passengers.length > 1 ? 48 : 0);
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -314,7 +337,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                             ),
                           ),
                           Text(
-                            "Shared ride active · You're saving ₹${passengers.length > 1 ? 48 * (passengers.length - 1) : 0}",
+                            "Shared ride active · You're saving ₹$mySavings",
                             style: const TextStyle(
                               color: Color(0xFF1A9E6E),
                               fontWeight: FontWeight.w600,
@@ -471,6 +494,14 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       "4th drop",
     ];
 
+    // Find current user's info for "You Pay" calculation
+    final myInfo = passengers.firstWhere(
+      (p) => currentUserId != null && p['_id'].toString() == currentUserId.toString(),
+      orElse: () => <String, dynamic>{},
+    );
+    final mySharedFare = myInfo['sharedFare'] ?? (passengers.length > 1 ? 82 : 130);
+    final mySavings = myInfo['savings'] ?? (passengers.length > 1 ? 48 : 0);
+
     return Row(
       children: [
         // Passenger cards
@@ -480,9 +511,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
           final name = passenger['name'] ?? 'Passenger';
           final dropLoc = passenger['dropLocation'] ?? '';
           final isCurrentUser =
-              currentUserId != null && passenger['_id'] == currentUserId;
+              currentUserId != null && passenger['_id'].toString() == currentUserId.toString();
           final colors = colorPalette[index % colorPalette.length];
           final initials = _getInitials(name);
+          final pSharedFare = passenger['sharedFare'] ?? (passengers.length > 1 ? 82 : 130);
 
           return Expanded(
             child: Container(
@@ -531,25 +563,38 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colors['bg'],
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      index < dropLabels.length
-                          ? dropLabels[index]
-                          : "${index + 1}th drop",
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w600,
-                        color: colors['fg'],
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colors['bg'],
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          index < dropLabels.length
+                              ? dropLabels[index]
+                              : "${index + 1}th drop",
+                          style: TextStyle(
+                            fontSize: 8,
+                            fontWeight: FontWeight.w600,
+                            color: colors['fg'],
+                          ),
+                        ),
                       ),
-                    ),
+                      Text(
+                        "₹$pSharedFare",
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[800],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -577,17 +622,17 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  "₹${passengers.length > 1 ? 82 : 130}",
+                  "₹$mySharedFare",
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF1A9E6E),
                   ),
                 ),
-                if (passengers.length > 1)
+                if (mySavings > 0)
                   Text(
-                    "saved ₹${48 * (passengers.length - 1)}",
-                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                    "saved ₹$mySavings",
+                    style: const TextStyle(fontSize: 9, color: Colors.green, fontWeight: FontWeight.bold),
                   ),
               ],
             ),

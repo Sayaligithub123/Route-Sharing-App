@@ -1,202 +1,474 @@
 import 'package:flutter/material.dart';
 import 'Driver_homepage.dart';
 
-class DriverTripSummaryPage extends StatelessWidget {
-  final String phone;
-  DriverTripSummaryPage({required this.phone});
+class DriverTripSummaryPage extends StatefulWidget {
+  final String? phone;
+  final dynamic rideData;
+
+  const DriverTripSummaryPage({super.key, this.phone, this.rideData});
+
+  @override
+  State<DriverTripSummaryPage> createState() => _DriverTripSummaryPageState();
+}
+
+class _DriverTripSummaryPageState extends State<DriverTripSummaryPage> {
+  // Store dynamic passenger rating states
+  final Map<String, int> _passengerRatings = {};
+
+  // Color palette for passenger avatars
+  final List<Map<String, Color>> _colorPalette = [
+    {'bg': const Color(0xFFEDE9FE), 'fg': const Color(0xFF5B21B6)},
+    {'bg': const Color(0xFFFEF3C7), 'fg': const Color(0xFF92400E)},
+    {'bg': const Color(0xFFDCFCE7), 'fg': const Color(0xFF166534)},
+    {'bg': const Color(0xFFDBEAFE), 'fg': const Color(0xFF1E40AF)},
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Color(0xFFF9FAFB),
+    // 1. Parse rideData or use robust fallback values
+    String source = 'Station';
+    String destination = 'Hadapsar';
+    int driverEarnings = 191;
+    int totalFaresCollected = 212;
+    int platformCommission = 21;
+    double tripDistance = 8.4;
+    int tripDuration = 28;
+    
+    List<dynamic> passengers = [];
 
+    if (widget.rideData != null) {
+      final ride = widget.rideData;
+      source = ride['source'] ?? 'Source';
+      destination = ride['destination'] ?? 'Destination';
+      
+      driverEarnings = (ride['driverEarnings'] as num?)?.toInt() ?? 191;
+      totalFaresCollected = (ride['totalFaresCollected'] as num?)?.toInt() ?? 212;
+      platformCommission = (ride['platformCommission'] as num?)?.toInt() ?? 21;
+      
+      if (ride['passengers'] is List) {
+        passengers = ride['passengers'] as List;
+      }
+
+      // Compute total distance based on passengers or default
+      double maxDist = 0.0;
+      for (var p in passengers) {
+        final d = (p['distance'] as num?)?.toDouble() ?? 0.0;
+        if (d > maxDist) maxDist = d;
+      }
+      tripDistance = maxDist > 0 ? maxDist : 8.4;
+      tripDuration = maxDist > 0 ? (maxDist * 2.5).round() : 28;
+    } else {
+      // Setup demo fallback passengers list
+      passengers = [
+        {
+          '_id': '1',
+          'name': 'Arjun Mehta',
+          'sharedFare': 143,
+          'soloFare': 200,
+          'savings': 57,
+          'distance': 8.4,
+          'dropLocation': 'Hadapsar'
+        },
+        {
+          '_id': '2',
+          'name': 'Priya Bose',
+          'sharedFare': 48,
+          'soloFare': 70,
+          'savings': 22,
+          'distance': 3.2,
+          'dropLocation': 'Station Detour'
+        }
+      ];
+    }
+
+    // Initialize passenger ratings map if empty
+    for (var p in passengers) {
+      final id = p['_id']?.toString() ?? p['name'] ?? '';
+      if (!_passengerRatings.containsKey(id)) {
+        _passengerRatings[id] = 5; // Default 5 star rating
+      }
+    }
+
+    // Dynamic Route Sharing Bonus:
+    // Solo earnings would be 90% of the first passenger's solo fare (driver baseline)
+    int baselineSoloFare = passengers.isNotEmpty ? ((passengers[0]['soloFare'] as num?)?.toInt() ?? 130) : 130;
+    int soloEarningsIfSingleDriverShare = (baselineSoloFare * 0.90).round();
+    int sharedBonus = driverEarnings - soloEarningsIfSingleDriverShare;
+    if (sharedBonus < 0) sharedBonus = 0;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
         child: Column(
           children: [
             /// TOP BAR
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
                 children: [
                   GestureDetector(
-                    onTap: () => Navigator.pop(context),
+                    onTap: () {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (context) => const DriverHomeScreen()),
+                        (route) => false,
+                      );
+                    },
                     child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: Color(0xFFF3F4F6),
+                      width: 36,
+                      height: 36,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFE2E8F0),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.arrow_back, size: 16),
+                      child: const Icon(Icons.arrow_back_rounded, size: 18, color: Color(0xFF334155)),
                     ),
                   ),
-                  Expanded(
+                  const Expanded(
                     child: Text(
                       "Trip Summary",
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0F172A),
                       ),
                     ),
                   ),
-                  SizedBox(width: 32),
+                  const SizedBox(width: 36),
                 ],
               ),
             ),
 
             Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.all(20),
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    /// 💰 TITLE
-                    Text("💰", style: TextStyle(fontSize: 36)),
-                    SizedBox(height: 8),
-                    Text(
-                      "Trip Complete!",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                    /// 🎉 Celebration Header
+                    Center(
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF3C7),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFF59E0B).withOpacity(0.15),
+                                  blurRadius: 15,
+                                  offset: const Offset(0, 6),
+                                )
+                              ],
+                            ),
+                            child: const Text("💰", style: TextStyle(fontSize: 36)),
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            "Trip Completed Successfully!",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "Thank you for boosting route efficiency",
+                            style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                          ),
+                        ],
                       ),
                     ),
 
-                    SizedBox(height: 16),
+                    const SizedBox(height: 24),
 
-                    /// 🟢 TOTAL EARNINGS CARD
+                    /// 🟢 PREMIUM TOTAL EARNINGS CARD
                     Container(
                       width: double.infinity,
-                      padding: EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Color(0xFF1A9E6E),
-                        borderRadius: BorderRadius.circular(16),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF10B981), Color(0xFF059669)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF10B981).withOpacity(0.3),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          )
+                        ],
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            "Total earned this trip",
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.white70,
+                          Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  "TOTAL NET EARNINGS (90%)",
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white70,
+                                    letterSpacing: 1.0,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  "₹$driverEarnings",
+                                  style: const TextStyle(
+                                    fontSize: 42,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          SizedBox(height: 4),
-                          Text(
-                            "₹191",
-                            style: TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                          
+                          // Horizontal separator
+                          Container(height: 1, color: Colors.white.withOpacity(0.15)),
+                          
+                          // Passenger contributions list
+                          Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const Text(
+                                  "PASSENGER CONTRIBUTIONS",
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white70,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Wrap(
+                                  spacing: 16,
+                                  runSpacing: 8,
+                                  children: passengers.map((p) {
+                                    final pName = p['name'] ?? 'Passenger';
+                                    final pSharedFare = p['sharedFare'] ?? 0;
+                                    return _earnerBox(
+                                      "₹$pSharedFare", 
+                                      "from ${pName.split(' ').first}",
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
                             ),
-                          ),
-                          SizedBox(height: 8),
-                          Row(
-                            children: [
-                              _earnerBox("₹143", "from Arjun"),
-                              SizedBox(width: 16),
-                              _earnerBox("₹48", "from Priya"),
-                            ],
-                          ),
+                          )
                         ],
                       ),
                     ),
 
-                    SizedBox(height: 14),
+                    const SizedBox(height: 20),
 
-                    /// 📊 TRIP DETAILS CARD
+                    /// 📊 TRIP METADATA DETAILS CARD
                     Container(
-                      padding: EdgeInsets.all(14),
+                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.grey.shade100),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF0F172A).withOpacity(0.03),
+                            blurRadius: 15,
+                            offset: const Offset(0, 6),
+                          )
+                        ],
                       ),
                       child: Column(
                         children: [
-                          _fareRow("Route", "Station → Hadapsar"),
-                          _fareRow("Distance", "8.4 km"),
-                          _fareRow("Duration", "28 min"),
-                          _fareRow("Passengers", "2 (shared)"),
-                          Divider(height: 20),
-                          _fareRowStrikethrough(
-                            "Solo earnings would be",
-                            "₹95",
+                          _fareRow("Route", "$source → $destination"),
+                          _fareRow("Distance", "${tripDistance.toStringAsFixed(1)} km"),
+                          _fareRow("Duration", "$tripDuration min"),
+                          _fareRow("Passengers Aboard", "${passengers.length} (shared)"),
+                          
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            child: Divider(color: Color(0xFFF1F5F9), thickness: 1),
                           ),
-                          _fareRowGreen("Shared bonus earned", "+₹96"),
+                          
+                          _fareRowStrikethrough(
+                            "Base Solo Driver Earnings",
+                            "₹$soloEarningsIfSingleDriverShare",
+                          ),
+                          _fareRowGreen(
+                            "Route-Share Bonus (Extra Earning)",
+                            "+₹$sharedBonus",
+                          ),
                         ],
                       ),
                     ),
 
-                    SizedBox(height: 16),
+                    const SizedBox(height: 24),
 
-                    /// ⭐ RATE PASSENGERS
+                    /// ⭐ RATE PASSENGERS SECTION
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
                         "Rate your passengers",
                         style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade700,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.grey[700],
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ),
 
-                    SizedBox(height: 10),
+                    const SizedBox(height: 12),
 
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _ratingBox(
-                            "AP",
-                            "Arjun",
-                            Color(0xFFEDE9FE),
-                            Color(0xFF5B21B6),
+                    // Passenger rating cards
+                    Column(
+                      children: passengers.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final p = entry.value;
+                        final name = p['name'] ?? 'Passenger';
+                        final pId = p['_id']?.toString() ?? name;
+                        final colors = _colorPalette[index % _colorPalette.length];
+                        final initials = _getInitials(name);
+                        final currentRating = _passengerRatings[pId] ?? 5;
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF0F172A).withOpacity(0.02),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              )
+                            ],
                           ),
-                        ),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: _ratingBox(
-                            "PB",
-                            "Priya",
-                            Color(0xFFFEF3C7),
-                            Color(0xFF92400E),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 20,
+                                backgroundColor: colors['bg'],
+                                child: Text(
+                                  initials,
+                                  style: TextStyle(
+                                    color: colors['fg'],
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      name,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF334155),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    // Ratings stars
+                                    Row(
+                                      children: List.generate(5, (starIdx) {
+                                        final starValue = starIdx + 1;
+                                        final isFilled = starValue <= currentRating;
+                                        return GestureDetector(
+                                          onTap: () {
+                                            setState(() {
+                                              _passengerRatings[pId] = starValue;
+                                            });
+                                          },
+                                          child: Icon(
+                                            isFilled ? Icons.star_rounded : Icons.star_outline_rounded,
+                                            size: 26,
+                                            color: isFilled ? const Color(0xFFF59E0B) : const Color(0xFFCBD5E1),
+                                          ),
+                                        );
+                                      }),
+                                    )
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                currentRating == 5 ? "Excellent!" : "$currentRating Star",
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[500],
+                                ),
+                              )
+                            ],
                           ),
-                        ),
-                      ],
+                        );
+                      }).toList(),
                     ),
 
-                    SizedBox(height: 24),
+                    const SizedBox(height: 28),
 
                     /// 🚀 DONE BUTTON
-                    SizedBox(
-                      width: double.infinity,
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(18),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF10B981), Color(0xFF059669)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF10B981).withOpacity(0.3),
+                            blurRadius: 15,
+                            offset: const Offset(0, 6),
+                          )
+                        ],
+                      ),
                       child: ElevatedButton(
-                         onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const DriverHomeScreen(),
-                    ),
-                  );
-                },
+                        onPressed: () {
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const DriverHomeScreen(),
+                            ),
+                            (route) => false,
+                          );
+                        },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF1A9E6E),
-                          padding: EdgeInsets.symmetric(vertical: 16),
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          padding: const EdgeInsets.symmetric(vertical: 18),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(18),
                           ),
                         ),
-                        child: Text(
+                        child: const Text(
                           "Done → Back Home",
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
                         ),
                       ),
                     ),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
@@ -213,30 +485,38 @@ class DriverTripSummaryPage extends StatelessWidget {
       children: [
         Text(
           amount,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
             color: Colors.white,
           ),
         ),
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.white70)),
+        const SizedBox(height: 2),
+        Text(
+          label, 
+          style: const TextStyle(
+            fontSize: 11, 
+            color: Colors.white70,
+            fontWeight: FontWeight.w500,
+          )
+        ),
       ],
     );
   }
 
   Widget _fareRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontSize: 13, color: Colors.grey)),
+          Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[500], fontWeight: FontWeight.w500)),
           Text(
             value,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey.shade800,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF334155),
             ),
           ),
         ],
@@ -246,16 +526,17 @@ class DriverTripSummaryPage extends StatelessWidget {
 
   Widget _fareRowStrikethrough(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontSize: 13, color: Colors.grey)),
+          Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[500], fontWeight: FontWeight.w500)),
           Text(
             value,
             style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey,
+              fontSize: 14,
+              color: Colors.grey[500],
+              fontWeight: FontWeight.bold,
               decoration: TextDecoration.lineThrough,
             ),
           ),
@@ -266,20 +547,20 @@ class DriverTripSummaryPage extends StatelessWidget {
 
   Widget _fareRowGreen(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
           ),
           Text(
             value,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1A9E6E),
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF10B981),
             ),
           ),
         ],
@@ -287,42 +568,11 @@ class DriverTripSummaryPage extends StatelessWidget {
     );
   }
 
-  Widget _ratingBox(
-    String initials,
-    String name,
-    Color avatarBg,
-    Color avatarFg,
-  ) {
-    return Container(
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade100),
-      ),
-      child: Column(
-        children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: avatarBg,
-            child: Text(
-              initials,
-              style: TextStyle(
-                color: avatarFg,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          SizedBox(height: 4),
-          Text(
-            name,
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-          ),
-          SizedBox(height: 4),
-          Text("⭐⭐⭐⭐⭐", style: TextStyle(fontSize: 16)),
-        ],
-      ),
-    );
+  String _getInitials(String name) {
+    final parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return "${parts[0][0]}${parts[1][0]}".toUpperCase();
+    }
+    return name.isNotEmpty ? name[0].toUpperCase() : "?";
   }
 }

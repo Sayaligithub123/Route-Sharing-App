@@ -1,6 +1,7 @@
 const Ride = require("../models/Ride");
 const Request = require("../models/Request");
 const User = require("../models/User");
+const fareService = require("../utils/fareService");
 
 // Start a ride (driver creates a ride listing)
 exports.startRide = async (req, res) => {
@@ -161,8 +162,14 @@ exports.respondToRequest = async (req, res) => {
         passengerId: request.passengerId,
         pickupLocation: request.pickupLocation || "",
         dropLocation: request.dropLocation || "",
+        distance: 0,
+        soloFare: 0,
+        sharedFare: 0,
+        savings: 0
       });
 
+      // Recalculate dynamic split fares for all passengers
+      await fareService.recalculateRideFares(ride);
       await ride.save();
 
       // Fetch updated ride with populated passengers for the notification
@@ -261,7 +268,7 @@ exports.getRidePassengers = async (req, res) => {
       return res.status(404).json({ error: "Ride not found" });
     }
 
-    // Build a combined passenger list with drop locations
+    // Build a combined passenger list with drop locations and fares
     const passengersWithDrops = ride.passengers.map((passenger, index) => {
       const dropInfo = ride.passengerDropLocations.find(
         d => d.passengerId && d.passengerId._id.toString() === passenger._id.toString()
@@ -272,6 +279,10 @@ exports.getRidePassengers = async (req, res) => {
         phone: passenger.phone,
         pickupLocation: dropInfo ? dropInfo.pickupLocation : "",
         dropLocation: dropInfo ? dropInfo.dropLocation : "",
+        distance: dropInfo && dropInfo.distance ? dropInfo.distance : 0,
+        soloFare: dropInfo && dropInfo.soloFare ? dropInfo.soloFare : 0,
+        sharedFare: dropInfo && dropInfo.sharedFare ? dropInfo.sharedFare : 0,
+        savings: dropInfo && dropInfo.savings ? dropInfo.savings : 0,
         dropOrder: index + 1,
       };
     });
@@ -285,6 +296,9 @@ exports.getRidePassengers = async (req, res) => {
       driver: ride.driverId,
       passengers: passengersWithDrops,
       totalPassengers: passengersWithDrops.length,
+      totalFaresCollected: ride.totalFaresCollected || 0,
+      driverEarnings: ride.driverEarnings || 0,
+      platformCommission: ride.platformCommission || 0
     });
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch ride passengers", details: error.message });
@@ -343,6 +357,7 @@ exports.completeRide = async (req, res) => {
     }
 
     ride.status = "completed";
+    await fareService.recalculateRideFares(ride);
     await ride.save();
 
     // Notify all passengers that the ride is completed

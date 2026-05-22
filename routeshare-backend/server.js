@@ -99,8 +99,8 @@ mongoose.connect(process.env.MONGO_URI)
     console.log("MongoDB Connected");
 
     // Start server only after DB connection
-    server.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+    server.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on 0.0.0.0:${PORT}`);
     });
 
   })

@@ -5,6 +5,9 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'Driver_joiningRequest.dart';
 import 'Driver_homepage.dart';
+import 'services/api_config.dart';
+import 'services/route_service.dart';
+import 'driver_trip_summary_page.dart';
 
 class ActiveRideScreen extends StatefulWidget {
   final String rideId;
@@ -12,11 +15,11 @@ class ActiveRideScreen extends StatefulWidget {
   final String destination;
 
   const ActiveRideScreen({
-    super.key,
+    key,
     required this.rideId,
     required this.source,
     required this.destination,
-  });
+  }) : super(key: key);
 
   @override
   State<ActiveRideScreen> createState() => _ActiveRideScreenState();
@@ -34,6 +37,11 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
   String routeDistance = "";
   String routeDuration = "";
   bool isCalculatingRoute = true;
+
+  // Dynamic earnings tracking
+  int totalFaresCollected = 0;
+  int driverEarnings = 0;
+  int platformCommission = 0;
 
   @override
   void initState() {
@@ -72,6 +80,9 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
             passengers = List<Map<String, dynamic>>.from(
               data['passengers'] ?? [],
             );
+            totalFaresCollected = (data['totalFaresCollected'] as num?)?.toInt() ?? 0;
+            driverEarnings = (data['driverEarnings'] as num?)?.toInt() ?? 0;
+            platformCommission = (data['platformCommission'] as num?)?.toInt() ?? 0;
             isLoadingPassengers = false;
           });
         }
@@ -214,6 +225,32 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
         body: jsonEncode({"rideId": widget.rideId}),
       );
       if (response.statusCode == 200) {
+        // Fetch completed ride details with passenger information
+        dynamic completedRideData;
+        try {
+          final getUrl = Uri.parse(
+            "${ApiConfig.baseUrl}/api/rides/ride/${widget.rideId}/passengers",
+          );
+          final getResponse = await http.get(getUrl);
+          if (getResponse.statusCode == 200) {
+            completedRideData = jsonDecode(getResponse.body);
+          }
+        } catch (e) {
+          print("Error fetching complete ride data: $e");
+        }
+
+        // Graceful fallback if get passengers failed
+        completedRideData ??= {
+          'rideId': widget.rideId,
+          'source': widget.source,
+          'destination': widget.destination,
+          'status': 'completed',
+          'passengers': passengers,
+          'totalFaresCollected': totalFaresCollected,
+          'driverEarnings': driverEarnings,
+          'platformCommission': platformCommission,
+        };
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -222,7 +259,9 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
           );
           Navigator.pushAndRemoveUntil(
             context,
-            MaterialPageRoute(builder: (context) => const DriverHomeScreen()),
+            MaterialPageRoute(
+              builder: (context) => DriverTripSummaryPage(rideData: completedRideData),
+            ),
             (route) => false,
           );
         }
@@ -414,8 +453,10 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
                         child: CircularProgressIndicator(),
                       ),
                     )
-                  else
+                  else ...[
                     _buildPassengerCards(),
+                    _buildEarningsBreakdown(),
+                  ],
 
                   const SizedBox(height: 12),
 
@@ -592,12 +633,12 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
             child: Column(
               children: [
                 const Text(
-                  "Earning",
+                  "Earnings",
                   style: TextStyle(fontSize: 10, color: Colors.grey),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  "₹${130 + (passengers.length > 1 ? 48 * (passengers.length - 1) : 0)}",
+                  "₹$driverEarnings",
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -605,7 +646,7 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
                   ),
                 ),
                 const Text(
-                  "total",
+                  "net (90%)",
                   style: TextStyle(fontSize: 10, color: Colors.grey),
                 ),
               ],
@@ -613,6 +654,97 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildEarningsBreakdown() {
+    if (passengers.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.analytics_rounded, size: 16, color: Color(0xFF1A9E6E)),
+              SizedBox(width: 8),
+              Text(
+                "LIVE FARE SPLIT BREAKDOWN",
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A9E6E),
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Passenger list and what they pay
+          ...passengers.map((p) {
+            final pName = p['name'] ?? 'Passenger';
+            final pSharedFare = p['sharedFare'] ?? 0;
+            final pSoloFare = p['soloFare'] ?? 0;
+            final pSavings = p['savings'] ?? 0;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(pName, style: TextStyle(fontSize: 13, color: Color(0xFF475569))),
+                  Text(
+                    "₹$pSharedFare (Saved ₹$pSavings)",
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            );
+          }),
+          const Divider(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("Total Fares Collected", style: TextStyle(fontSize: 13, color: Color(0xFF475569))),
+              Text("₹$totalFaresCollected", style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("Platform Comm. (10%)", style: TextStyle(fontSize: 13, color: Color(0xFF475569))),
+              Text("- ₹$platformCommission", style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.red)),
+            ],
+          ),
+          const Divider(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("Your Net Earnings (90%)", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+              Text(
+                "₹$driverEarnings",
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A9E6E)),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
