@@ -47,8 +47,26 @@ class _ActiveRideScreenState extends State<ActiveRideScreen> {
   void initState() {
     super.initState();
     _fetchPassengers();
+    _fetchPendingRequests();
     _connectSocket();
     _calculateRouteInfo();
+  }
+
+  Future<void> _fetchPendingRequests() async {
+    try {
+      final url = Uri.parse("${ApiConfig.baseUrl}/api/rides/ride/${widget.rideId}/requests");
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final List requests = jsonDecode(response.body);
+        if (mounted && requests.isNotEmpty) {
+          for (var req in requests) {
+            _fetchPassengerAndShowModal(req);
+          }
+        }
+      }
+    } catch (e) {
+      print("Error fetching pending requests: $e");
+    }
   }
 
   Future<void> _calculateRouteInfo() async {

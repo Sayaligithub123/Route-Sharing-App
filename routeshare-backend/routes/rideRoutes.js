@@ -12,6 +12,7 @@ router.post("/update-location", rideController.updateLocation);
 
 // New routes for ride lifecycle
 router.get("/ride/:id", rideController.getRideDetails);
+router.get("/ride/:id/requests", rideController.getPendingRequests);
 router.get("/ride/:id/passengers", rideController.getRidePassengers);
 router.post("/start-trip", rideController.startTrip);
 router.post("/complete-ride", rideController.completeRide);

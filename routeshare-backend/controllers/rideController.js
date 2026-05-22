@@ -235,6 +235,17 @@ exports.getRequestStatus = async (req, res) => {
   }
 };
 
+// Get pending requests for a ride
+exports.getPendingRequests = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const requests = await Request.find({ rideId: id, status: "pending" });
+    res.status(200).json(requests);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch pending requests", details: error.message });
+  }
+};
+
 // Get ride details
 exports.getRideDetails = async (req, res) => {
   try {
